@@ -12,6 +12,7 @@ from typing_extensions import TypeAlias
 
 from .operators import prod
 
+
 MAX_DIMS = 32
 
 
@@ -99,7 +100,7 @@ def broadcast_index(
             out_index[i] = big_index[i]
 
 
-def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
+def shape_broadcast(shape1: UserShape, shape2: UserShape) -> Tuple[int, ... ]:
     """Broadcast two shapes to create a new union shape.
 
     Args:
@@ -114,6 +115,8 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
     """
     len1, len2 = len(shape1), len(shape2)
+    shape1 = tuple(shape1)
+    shape2 = tuple(shape2)
     if len1 < len2:
         shape1 = (1,) * (len2 - len1) + shape1
     elif len2 < len1:
@@ -173,7 +176,7 @@ class TensorData:
         self._shape = array(shape)
         self.strides = strides
         self.dims = len(strides)
-        self.size = int(prod(shape))
+        self.size = int(prod(list(shape)))
         self.shape = shape
         assert len(self._storage) == self.size
 
@@ -202,6 +205,7 @@ class TensorData:
         return shape_broadcast(shape_a, shape_b)
 
     def index(self, index: Union[int, UserIndex]) -> int:
+        """Returns the index"""
         if isinstance(index, int):
             aindex: Index = array([index])
         else:  # if isinstance(index, tuple):
@@ -225,6 +229,7 @@ class TensorData:
         return index_to_position(array(index), self._strides)
 
     def indices(self) -> Iterable[UserIndex]:
+        """Get all valid indices."""
         lshape: Shape = array(self.shape)
         out_index: Index = array(self.shape)
         for i in range(self.size):
@@ -236,10 +241,12 @@ class TensorData:
         return tuple((random.randint(0, s - 1) for s in self.shape))
 
     def get(self, key: UserIndex) -> float:
+        """Get the value at the specified index."""
         x: float = self._storage[self.index(key)]
         return x
 
     def set(self, key: UserIndex, val: float) -> None:
+        """Set the value at the specified index."""
         self._storage[self.index(key)] = val
 
     def tuple(self) -> Tuple[Storage, Shape, Strides]:
