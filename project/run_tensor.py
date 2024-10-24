@@ -41,9 +41,9 @@ class Linear(minitorch.Module):
             self.weights.value.view(1, in_size, self.out_size)
             * x.view(batch, in_size, 1)
         ).sum(1).view(batch, self.out_size)
-        
+
         bias = self.bias.value.view(1, self.out_size)
-        
+
         return weighted_sum + bias
 
 

@@ -198,6 +198,7 @@ class Tensor:
 
     def zeros(self, shape: Optional[UserShape] = None) -> Tensor:
         """Create a tensor filled with zeros."""
+
         def zero(shape: UserShape) -> Tensor:
             return Tensor.make(
                 [0.0] * int(operators.prod(list(shape))), shape, backend=self.backend
@@ -294,6 +295,7 @@ class Tensor:
 
         """
         return self._tensor.shape
+
     @property
     def size(self) -> int:
         """Returns the total number of elements in the tensor."""
@@ -342,11 +344,13 @@ class Tensor:
 
     def all(self, dim: Optional[int] = None) -> Tensor:
         """Returns True if all elements in the tensor are non-zero."""
-        return All.apply(self,dim)
+        return All.apply(self, dim)
 
     def is_close(self, other: TensorLike, atol: float = 1e-5) -> Tensor:
         """Element-wise check if tensors are close within a tolerance."""
-        atol_tensor = self._ensure_tensor(atol) if not isinstance(atol, Tensor) else atol
+        atol_tensor = (
+            self._ensure_tensor(atol) if not isinstance(atol, Tensor) else atol
+        )
         return IsClose.apply(self, self._ensure_tensor(other), atol_tensor)
 
     def sigmoid(self) -> Tensor:
@@ -374,7 +378,11 @@ class Tensor:
 
     def mean(self, dim: Optional[int] = None) -> Tensor:
         """Mean of tensor elements along the specified dimension."""
-        return self.sum(dim) / self.size if dim is None else self.sum(dim) / self.shape[dim]
+        return (
+            self.sum(dim) / self.size
+            if dim is None
+            else self.sum(dim) / self.shape[dim]
+        )
 
     def permute(self, *order: int) -> Tensor:
         """Permutes the dimensions of the tensor according to the specified order."""
@@ -387,5 +395,3 @@ class Tensor:
     def zero_grad_(self) -> None:
         """Sets the gradient to None, effectively resetting the gradients."""
         self.grad = None
-
-

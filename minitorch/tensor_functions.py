@@ -38,11 +38,11 @@ class Function:
         return cls.forward(ctx, *inps)  # type: ignore
 
     @classmethod
-    def apply(cls, *vals: Union[Tensor, int, Tuple[int, ...],None]) -> Tensor:
+    def apply(cls, *vals: Union[Tensor, int, Tuple[int, ...], None]) -> Tensor:
         """Call the forward function and track history"""
         raw_vals = []
         need_grad = False
-        tensor_vals = [] 
+        tensor_vals = []
         for v in vals:
             if isinstance(v, minitorch.Tensor):  # Only process Tensor objects
                 raw_vals.append(v.detach())  # Get the raw value without history
@@ -50,15 +50,18 @@ class Function:
                 if v.requires_grad():  # Check if gradient is needed
                     need_grad = True
             else:
-                raw_vals.append(v)  # For non-tensor values (like dim or atol), pass as-is
-
+                raw_vals.append(
+                    v
+                )  # For non-tensor values (like dim or atol), pass as-is
 
         # Create the context.
         ctx = Context(not need_grad)
 
         # Call forward with the variables.
         c = cls._forward(ctx, *raw_vals)
-        assert isinstance(c, minitorch.Tensor), f"Expected return type Tensor, got {type(c)}"
+        assert isinstance(
+            c, minitorch.Tensor
+        ), f"Expected return type Tensor, got {type(c)}"
         #     type(c)
         # )
 
@@ -112,14 +115,14 @@ class All(Function):
     def forward(ctx: Context, a: Tensor, dim: Optional[int] = None) -> Tensor:
         """Return 1 if all are true"""
         # mapped = SimpleBackend.map(lambda x: 1.0 if x == 1.0 else 0.0)(a)
-        
+
         # Step 2: Reduce by multiplying along the specified dimension
         # If dim is None, reduce across all elements to a single value
         if dim is not None:
-            reduced = a.f.mul_reduce(a,dim)
+            reduced = a.f.mul_reduce(a, dim)
         else:
-            reduced = tensor([1]) 
-        
+            reduced = tensor([1])
+
         # The result will be 1.0 if all elements were 1.0, else 0.0
         return reduced
 
@@ -133,7 +136,6 @@ class Mul(Function):
         ctx.save_for_backward(t1, t2)
         return t1.f.mul_zip(t1, t2)
 
-
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Borward method for mul"""
@@ -141,6 +143,7 @@ class Mul(Function):
         grad_t1 = grad_output.f.mul_zip(t2, grad_output)
         grad_t2 = grad_output.f.mul_zip(t1, grad_output)
         return grad_t1, grad_t2
+
 
 class View(Function):
     @staticmethod
@@ -162,25 +165,27 @@ class View(Function):
                 grad_output._tensor._storage, original, backend=grad_output.backend
             ),
         )
+
+
 class Sum(Function):
     """Sums elements of the tensor along the specified dimension."""
 
     @staticmethod
     def forward(ctx: Context, t1: Tensor, dim: Optional[int] = None) -> Tensor:
         """Forward method for sum"""
-        ctx.save_for_backward(t1,dim)
+        ctx.save_for_backward(t1, dim)
         if dim is not None:
             reduced = t1.f.add_reduce(t1, dim)
         else:
-            reduced = t1.f.add_reduce(t1.contiguous().view(int(operators.prod(list(t1.shape)))), 0
-                    )
+            reduced = t1.f.add_reduce(
+                t1.contiguous().view(int(operators.prod(list(t1.shape)))), 0
+            )
         return reduced
-
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Borward method for sum"""
-        (t1,dim) = ctx.saved_values
+        (t1, dim) = ctx.saved_values
         shape = t1.shape
         if dim is None:
             out = grad_output.zeros(shape)
@@ -188,6 +193,7 @@ class Sum(Function):
             return out
         else:
             return grad_output
+
 
 class Sigmoid(Function):
     """Applies the sigmoid function element-wise."""
@@ -201,10 +207,17 @@ class Sigmoid(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Borward method for sigmoid"""
-        t1, = ctx.saved_values
+        (t1,) = ctx.saved_values
         return t1.f.add_zip(
-            grad_output.f.mul_zip(grad_output, t1.f.sigmoid_map(t1)),grad_output.f.neg_map(grad_output.f.mul_zip(grad_output, t1.f.mul_zip(t1.f.sigmoid_map(t1), t1.f.sigmoid_map(t1)))),
+            grad_output.f.mul_zip(grad_output, t1.f.sigmoid_map(t1)),
+            grad_output.f.neg_map(
+                grad_output.f.mul_zip(
+                    grad_output,
+                    t1.f.mul_zip(t1.f.sigmoid_map(t1), t1.f.sigmoid_map(t1)),
+                )
+            ),
         )
+
 
 class ReLU(Function):
     """Applies the rectified linear unit (ReLU) function element-wise."""
@@ -218,8 +231,9 @@ class ReLU(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Borward method for relu"""
-        t1, = ctx.saved_values
+        (t1,) = ctx.saved_values
         return grad_output.f.relu_back_zip(t1, grad_output)
+
 
 class Copy(Function):
     @staticmethod
@@ -231,6 +245,7 @@ class Copy(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Undo"""
         return grad_output
+
 
 class Log(Function):
     """Applies the logarithm function element-wise."""
@@ -244,8 +259,9 @@ class Log(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Borward method for log"""
-        t1, = ctx.saved_values
+        (t1,) = ctx.saved_values
         return grad_output.f.log_back_zip(t1, grad_output)
+
 
 class Exp(Function):
     """Applies the exponential function element-wise."""
@@ -259,7 +275,7 @@ class Exp(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Borward method for log"""
-        t1, = ctx.saved_values
+        (t1,) = ctx.saved_values
         return grad_output.f.mul_zip(grad_output, t1.f.exp_map(t1))
 
 
@@ -278,6 +294,7 @@ class LT(Function):
         zero_grad = grad_output.zeros(ctx.saved_values[0].shape)
         return zero_grad, zero_grad
 
+
 class EQ(Function):
     """Performs element-wise equality comparison between two tensors."""
 
@@ -292,6 +309,7 @@ class EQ(Function):
         """Borward method for equal"""
         zero_grad = grad_output.zeros(ctx.saved_values[0].shape)
         return zero_grad, zero_grad
+
 
 class IsClose(Function):
     """Checks if two tensors are element-wise close within a tolerance."""
@@ -320,14 +338,13 @@ class Permute(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Borward method for permute"""
-        t1,order = ctx.saved_values
+        t1, order = ctx.saved_values
         return minitorch.Tensor.make(
-                    grad_output._tensor._storage,
-                    t1._tensor.shape,
-                    t1._tensor.strides,
-                    backend=grad_output.backend,
-                )
-
+            grad_output._tensor._storage,
+            t1._tensor.shape,
+            t1._tensor.strides,
+            backend=grad_output.backend,
+        )
 
 
 class MatMul(Function):

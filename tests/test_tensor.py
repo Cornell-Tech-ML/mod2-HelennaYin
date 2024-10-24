@@ -105,7 +105,7 @@ def test_two_grad(
     ts: Tuple[Tensor, Tensor],
 ) -> None:
     name, _, tensor_fn = fn
-    print (fn,';', tensor_fn,';',name)
+    print(fn, ";", tensor_fn, ";", name)
     t1, t2 = ts
     grad_check(tensor_fn, t1, t2)
 
@@ -159,6 +159,7 @@ def test_back_view(t1: Tensor) -> None:
     def view(a: Tensor) -> Tensor:
         a = a.contiguous()
         return a.view(a.size)
+
     grad_check(view, t1)
 
 
@@ -228,4 +229,3 @@ def test_reduce_forward_all_dims() -> None:
     t_summed_all_expected = tensor([27])
 
     assert_close(t_summed_all[0], t_summed_all_expected[0])
-
