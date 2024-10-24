@@ -98,8 +98,10 @@ lint.ignore = [
     "ANN204",
     "ANN102",
 ]
+
 lint.select = ["D", "E", "F", "N", "ANN"]
-lint_fixable = [
+
+lint.fixable = [
     "A",
     "B",
     "C",
