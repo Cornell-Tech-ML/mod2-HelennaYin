@@ -105,6 +105,7 @@ def test_two_grad(
     ts: Tuple[Tensor, Tensor],
 ) -> None:
     name, _, tensor_fn = fn
+    print(fn, ";", tensor_fn, ";", name)
     t1, t2 = ts
     grad_check(tensor_fn, t1, t2)
 
@@ -119,6 +120,7 @@ def test_two_grad_broadcast(
     """Test the grad of a two argument function"""
     name, base_fn, tensor_fn = fn
     t1, t2 = ts
+
     grad_check(tensor_fn, t1, t2)
 
     # broadcast check
@@ -145,6 +147,8 @@ def test_view() -> None:
     t2 = t2.view(6, 1)
     assert t2.shape == (6, 1)
     t2 = t2.view(2, 3)
+    print(t.is_close(t2))
+    print(t.is_close(t2).all())
     assert t.is_close(t2).all().item() == 1.0
 
 
@@ -194,9 +198,10 @@ def test_reduce_forward_one_dim() -> None:
 
     # here 0 means to reduce the 0th dim, 3 -> nothing
     t_summed = t.sum(0)
-
+    print(t_summed)
     # shape (2)
-    t_sum_expected = tensor([[11, 16]])
+    t_sum_expected = tensor([[11.0, 16.0]])
+
     assert t_summed.is_close(t_sum_expected).all().item()
 
 
@@ -204,13 +209,12 @@ def test_reduce_forward_one_dim() -> None:
 def test_reduce_forward_one_dim_2() -> None:
     # shape (3, 2)
     t = tensor([[2, 3], [4, 6], [5, 7]])
-
     # here 1 means reduce the 1st dim, 2 -> nothing
     t_summed_2 = t.sum(1)
 
     # shape (3)
     t_sum_2_expected = tensor([[5], [10], [12]])
-    assert t_summed_2.is_close(t_sum_2_expected).all().item()
+    assert (t_summed_2.is_close(t_sum_2_expected)).all().item()
 
 
 @pytest.mark.task2_3

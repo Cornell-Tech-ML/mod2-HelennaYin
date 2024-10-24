@@ -112,46 +112,110 @@ class Scalar:
         return self.history is not None and self.history.last_fn is None
 
     def is_constant(self) -> bool:
+        """Returns True if this variable has no history and is a constant."""
         return self.history is None
 
     @property
     def parents(self) -> Iterable[Variable]:
-        """Get the variables used to create this one."""
+        """Returns the input variables used in the operation that created this Scalar."""
         assert self.history is not None
         return self.history.inputs
 
+    def backward(self, d_output: Optional[float] = None) -> None:
+        """Calls autodiff to fill in the derivatives for the history of this object."""
+        if d_output is None:
+            d_output = 1.0
+        backpropagate(self, d_output)
+
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """Implements the chain rule to propagate gradients to inputs.
+
+        Args:
+        ----
+            d_output: The gradient from the output.
+
+        Returns:
+        -------
+            An iterable of tuples where each tuple contains a parent Variable and its gradient.
+
+        """
         h = self.history
         assert h is not None
         assert h.last_fn is not None
         assert h.ctx is not None
 
-        raise NotImplementedError("Need to include this file from past assignment.")
+        fn = h.last_fn
+        inputs = h.inputs
+        ctx = h.ctx
 
-    def backward(self, d_output: Optional[float] = None) -> None:
-        """Calls autodiff to fill in the derivatives for the history of this object.
+        local_gradients = fn._backward(ctx, d_output)
 
-        Args:
-        ----
-            d_output (number, opt): starting derivative to backpropagate through the model
-                                   (typically left out, and assumed to be 1.0).
+        if len(inputs) == 1:
+            if not isinstance(local_gradients, (tuple, list)):
+                local_gradients = (local_gradients,)
 
-        """
-        if d_output is None:
-            d_output = 1.0
-        backpropagate(self, d_output)
+        for input_var, local_grad in zip(inputs, local_gradients):
+            if not input_var.is_constant():
+                yield input_var, local_grad
 
-    raise NotImplementedError("Need to include this file from past assignment.")
+    def __lt__(self, b: ScalarLike) -> Scalar:
+        """Compares whether this Scalar is less than another value."""
+        return LT.apply(self, b)
+
+    def __gt__(self, b: ScalarLike) -> Scalar:
+        """Compares whether this Scalar is greater than another value."""
+        return LT.apply(b, self)
+
+    def __neg__(self) -> Scalar:
+        """Negates the Scalar."""
+        return Neg.apply(self)
+
+    def __sub__(self, b: ScalarLike) -> Scalar:
+        """Subtracts another Scalar or value from this Scalar."""
+        return self + (-b)
+
+    def __add__(self, b: ScalarLike) -> Scalar:
+        """Adds this Scalar to another Scalar or value."""
+        return Add.apply(self, b)
+
+    def __eq__(self, b: ScalarLike) -> Scalar:
+        """Checks whether this Scalar is equal to another Scalar or value."""
+        return EQ.apply(self, b)
+
+    def log(self) -> Scalar:
+        """Computes the logarithm of the Scalar."""
+        return Log.apply(self)
+
+    def exp(self) -> Scalar:
+        """Computes the exponential of the Scalar."""
+        return Exp.apply(self)
+
+    def sigmoid(self) -> Scalar:
+        """Computes the sigmoid of the Scalar."""
+        return Sigmoid.apply(self)
+
+    def relu(self) -> Scalar:
+        """Applies the ReLU activation function to the Scalar."""
+        return ReLU.apply(self)
 
 
 def derivative_check(f: Any, *scalars: Scalar) -> None:
-    """Checks that autodiff works on a python function.
-    Asserts False if derivative is incorrect.
+    """Checks that automatic differentiation works correctly on a Python function.
+    It compares the computed derivatives using backpropagation with numerical derivatives
+    computed using central difference.
 
-    Parameters
-    ----------
-        f : function from n-scalars to 1-scalar.
-        *scalars  : n input scalar values.
+    Args:
+    ----
+        f (Any): A function from n-scalars to 1-scalar for which the derivative is to be checked.
+        *scalars (Scalar): The input scalar values for the function `f` whose derivatives are to be tested.
+
+    Returns:
+    -------
+        None: The function asserts that the computed derivatives match the numerical derivatives.
+
+    Raises:
+    ------
+        AssertionError: If the computed derivative does not match the central difference approximation.
 
     """
     out = f(*scalars)
